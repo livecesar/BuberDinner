@@ -1,31 +1,54 @@
 using BuberDinner.Application.Common.Interfaces.Authentication;
+using BuberDinner.Application.Common.Interfaces.Persistence;
+using BuberDinner.Domain.Entities;
 
 namespace BuberDinner.Application.Services.Authentication;
 
 public class AuthenticationService : IAuthenticationService
 {
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
-
-    public AuthenticationService(IJwtTokenGenerator jwtTokenGenerator)
+    private readonly IUserRepository _userRepo;
+    public AuthenticationService(IJwtTokenGenerator jwtTokenGenerator, IUserRepository userRepo)
     {
         _jwtTokenGenerator = jwtTokenGenerator;
+        _userRepo = userRepo;
     }
 
     public AuthenticationResult Login(string email, string password)
     {
-        return new AuthenticationResult(Guid.NewGuid(), "firstName", "LastName", email, "token");
+        // Validate the user exists
+        if(_userRepo.GetUserByEmail(email) is not User user)
+            throw new Exception("The user does not exists.");
+
+        // Validate the password is correct
+        if(!user.Password.Equals(password))
+            throw new Exception("Invalid Password.");
+
+        // Create JWT
+        var token = _jwtTokenGenerator.GenerateToken(user);
+
+        return new AuthenticationResult(user, token);
     }
 
     public AuthenticationResult Register(string firstName, string lastName, string email, string password)
     {
         // Check if user already exists
+        if(_userRepo.GetUserByEmail(email) is not null)
+            throw new Exception("User with given email already exists.");
 
         // Create user: generate unic id
+        var user = new User{
+            FirstName = firstName,
+            LastName =lastName,
+            Email = email,
+            Password = password
+        };
+        
+        _userRepo.Add(user);
 
         // Create JWT token
-        var userId = Guid.NewGuid();
-        var token = _jwtTokenGenerator.GenerateToken(userId, firstName, lastName);
+        var token = _jwtTokenGenerator.GenerateToken(user);
 
-        return new AuthenticationResult(userId, firstName, lastName, email, token);
+        return new AuthenticationResult(user, token);
     }
 }
