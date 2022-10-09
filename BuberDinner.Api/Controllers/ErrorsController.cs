@@ -13,7 +13,7 @@ public class ErrorsController : ControllerBase
 
         var (statusCode, message) = exception switch
         {
-            DuplicateEmailException => (StatusCodes.Status409Conflict, "Email aldready exists."),
+            IServiceException serviceException => ((int)serviceException.StatusCode, serviceException.ErrorMessage),
             _=> (StatusCodes.Status500InternalServerError, "An unexpected error ocurred.")
         };
 
