@@ -1,32 +1,32 @@
-using BuberDinner.Application.Common.Errors;
+using BuberDinner.Application.Authentication.Common;
 using BuberDinner.Application.Common.Interfaces.Authentication;
 using BuberDinner.Application.Common.Interfaces.Persistence;
-using BuberDinner.Application.Services.Authentication.Common;
 using BuberDinner.Domain.Common.Errors;
 using BuberDinner.Domain.Entities;
 using ErrorOr;
-using FluentResults;
+using MediatR;
 
-namespace BuberDinner.Application.Services.Authentication.Queries;
+namespace BuberDinner.Application.Authentication.Queries.Login;
 
-public class AuthenticationQueryService : IAuthenticationQueryService
+public class LoginQueryHandler : IRequestHandler<LoginQuery, ErrorOr<AuthenticationResult>>
 {
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IUserRepository _userRepo;
-    public AuthenticationQueryService(IJwtTokenGenerator jwtTokenGenerator, IUserRepository userRepo)
+
+    public LoginQueryHandler(IUserRepository userRepo, IJwtTokenGenerator jwtTokenGenerator)
     {
-        _jwtTokenGenerator = jwtTokenGenerator;
         _userRepo = userRepo;
+        _jwtTokenGenerator = jwtTokenGenerator;
     }
 
-    public ErrorOr<AuthenticationResult> Login(string email, string password)
+    public async Task<ErrorOr<AuthenticationResult>> Handle(LoginQuery query, CancellationToken cancellationToken)
     {
-        // Validate the user exists
-        if(_userRepo.GetUserByEmail(email) is not User user)
+          // Validate the user exists
+        if(_userRepo.GetUserByEmail(query.Email) is not User user)
             return Errors.Authentication.InvalidCredentials;
 
         // Validate the password is correct
-        if(!user.Password.Equals(password))
+        if(!user.Password.Equals(query.Password))
             return Errors.Authentication.InvalidCredentials;
 
         // Create JWT
@@ -34,5 +34,4 @@ public class AuthenticationQueryService : IAuthenticationQueryService
 
         return new AuthenticationResult(user, token);
     }
-
 }
